@@ -24,9 +24,9 @@ jobs:
       uses: terraform-linters/setup-tflint@v1
     
     - name: Terraform fmt  #To check the formatting
-        id: fmt
-        run: terraform fmt -check
-        continue-on-error: true
+      id: fmt
+      run: terraform fmt -check
+      continue-on-error: true
 
 
     - name: Log in to Azure using OIDC
@@ -46,8 +46,8 @@ jobs:
         ARM_USE_OIDC: true
     
     - name: Terraform Validate  #after the init to validate the configuration
-        id: validate
-        run: terraform validate -no-color
+      id: validate
+      run: terraform validate -no-color
 
     - name: Init TFLint
       run: tflint --init
