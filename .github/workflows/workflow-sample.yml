@@ -21,7 +21,7 @@ jobs:
     steps:
     - uses: actions/checkout@v2
     - name: Setup TFLint
-          uses: terraform-linters/setup-tflint@v1
+      uses: terraform-linters/setup-tflint@v1
     
     - name: Terraform fmt  #To check the formatting
         id: fmt
@@ -54,3 +54,13 @@ jobs:
 
     - name: Run TFLint  #to perform the linting and annotate the code with any issues
       run: tflint -f compact
+
+    - name: Terraform Plan
+      id: plan
+      run: terraform plan $DESTROY -no-color --out=out.tfplan
+      env:
+        ARM_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+        ARM_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+        ARM_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+        ARM_USE_OIDC: true
+        DESTROY: ${{ steps.destroy_arg.outputs.val }}
