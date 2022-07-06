@@ -1,16 +1,66 @@
+name: Terraform Infra
+ 
 on: [push]
 
-name: AzureLoginSample
+env:
+  TF_LOG: INFO
+  tf_actions_working_dir: infra
 
+permissions:
+      id-token: write
+      contents: read
+ 
 jobs:
-
-  build-and-deploy:
+  plan:
+    name: Terraform plan
     runs-on: ubuntu-latest
+    environment: sandbox
+    defaults:
+      run:
+        working-directory: ${{ env.tf_actions_working_dir }}
     steps:
+    - uses: actions/checkout@v2
+    - name: Setup TFLint
+          uses: terraform-linters/setup-tflint@v1
     
-    - uses: azure/login@v1
+    - name: Terraform fmt  #To check the formatting
+        id: fmt
+        run: terraform fmt -check
+        continue-on-error: true
+
+
+    - name: Log in to Azure using OIDC
+      uses: azure/login@v1
       with:
-        creds: ${{ secrets.AZURE_CREDENTIALS }}
+        client-id: ${{ secrets.AZURE_CLIENT_ID }}
+        tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+        subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+    - name: Terraform Init
+      id: init
+      run: terraform init
+      env:
+        ARM_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+        ARM_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+        ARM_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+        ARM_USE_OIDC: true
     
-    - run: |
-        az webapp list --query "[?state=='Running']"
+    - name: Terraform Validate  #after the init to validate the configuration
+        id: validate
+        run: terraform validate -no-color
+
+    - name: Init TFLint
+      run: tflint --init
+
+    - name: Run TFLint  #to perform the linting and annotate the code with any issues
+      run: tflint -f compact
+
+    - name: Terraform Plan
+      id: plan
+      run: terraform plan $DESTROY -no-color --out=out.tfplan
+      env:
+        ARM_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+        ARM_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+        ARM_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+        ARM_USE_OIDC: true
+        DESTROY: ${{ steps.destroy_arg.outputs.val }}
